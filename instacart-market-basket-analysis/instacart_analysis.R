@@ -149,10 +149,10 @@ test_data <- merge(x= test_data, y = user_fea, by='user_id', all.x = TRUE)
 test_data <- merge(x= test_data, y = product_fea, by='product_id', all.x = TRUE)
 test_data <- merge(x= test_data, y = products, by='product_id', all.x = TRUE)
 
-#Step 5: Model selection and evaluation
+#Step 4: Model selection and evaluation
 train_feature <- train_data[-c(3,6,23,24,25)]
 train_feature$label <-as.factor(train_feature$label)#change data type
-#Step 5.1 split train and validation set
+#Step 4.1 split train and validation set
 trainIndex <- createDataPartition(train_feature$label, 
                                   p = .7,  
                                   list = FALSE,
@@ -166,14 +166,14 @@ valid_data_final <- train_feature[-trainIndex[, 1], ] #validation set
 test_feature <- test_data[-c(3,6,23,24,25)]
 test_feature$label <-as.factor(test_feature$label)
 
-#Step 5.2-1 Model Selection - SVM
+#Step 4.2-1 Model Selection - SVM
 svm.cart <- svm(label~.-user_id-product_id-order_id, data=train_data_final, cost=2, scale=TRUE)
 pred.svm <- predict(svm.cart,valid_data_final)
 svm.cm <- confusionMatrix(pred.svm,valid_data_final$label)
 #accuracy: 80.26%
 #recall rate: 5.79%
 
-#Step 5.2-2 Model Selection - Random Forest
+#Step 4.2-2 Model Selection - Random Forest
 rf.cart <- randomForest(label~.-user_id-product_id-order_id, data=train_data_final, importance=TRUE, ntree = 20, mtry=4)
 #confusion matrix
 print(rf.cart)
@@ -188,7 +188,7 @@ rf.cm <- confusionMatrix(pred.rf,valid_data_final$label)
 #accuracy: 84.71%
 #recall rate for reorder: 1474/(1757+1474) = 45.6%
 
-#Step 5.2-3 lightgbm
+#Step 4.2-3 lightgbm
 dtrain_matrix <- as.matrix(train_data_final[c(-3)])
 dtrain_label <- as.vector(train_data_final$label)
 dtrain <- lgb.Dataset(dtrain_matrix, label = dtrain_label)
@@ -214,8 +214,8 @@ lgbm.cm <- confusionMatrix(pred.lgbm, valid_data_final$label)
 #accuracy: 80.28%
 #recall rate for reorder: 169/3062+169 = 5.23%
 
-#Step 5.3 Model Comparison
-#Step 5.3-1 SVM
+#Step 4.3 Model Comparison
+#Step 4.3-1 SVM
 svm.prob <- svm(label ~.-user_id-product_id-order_id, data=train_data_final, cost=2, scale=TRUE, probability=TRUE)
 pred.svm.perf <- predict(svm.prob,valid_data_final, probability = TRUE)
 perf.svm <- prediction(attr(pred.svm.perf, "probabilities")[,2], valid_data_final$label)
@@ -229,7 +229,7 @@ abline(a=0,b=1,lwd=2,lty=2,col="gray")
 roc.svm <- roc(valid_data_final$label,as.numeric(svm.matrix))
 auc(roc.svm)#0.5256
 
-#Step 5.3-2 Random Forest
+#Step 4.3-2 Random Forest
 pred.rf.perf <- predict(rf.cart,valid_data_final,type='prob')
 perf.rf = prediction(pred.rf.perf[,2], valid_data_final$label)
 perf_auc_rf <- performance(perf.rf, "auc")
@@ -242,7 +242,7 @@ abline(a=0,b=1,lwd=2,lty=2,col="gray")
 roc.rf <- roc(valid_data_final$label,pred.rf.perf[,2])
 auc(roc.rf)#0.8227
 
-#Step 5.3-3 LGBM
+#Step 4.3-3 LGBM
 pred.lgbm.perf <- predict(lgbm.cart,dtest_matrix)
 perf_lgbm = prediction(pred.lgbm.perf, valid_data_final$label)
 auc.lgb = performance(perf_lgbm, "auc")
