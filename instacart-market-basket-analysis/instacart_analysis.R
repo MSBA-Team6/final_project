@@ -159,13 +159,21 @@ trainIndex <- createDataPartition(train_feature$label,
                                   times = 1)
 train_data_final <- train_feature[trainIndex[, 1], ]  #train set 
 valid_data_final <- train_feature[-trainIndex[, 1], ] #validation set
-# save to csv
+# save to csv for memory purpose
 # write.csv(train_data_final, "D:\\academic\\wm\\Spring 2022\\ml2\\materials\\final_project\\instacart-market-basket-analysis\\train_data_final.csv", row.names=TRUE)
 # write.csv(valid_data_final, "D:\\academic\\wm\\Spring 2022\\ml2\\materials\\final_project\\instacart-market-basket-analysis\\valid_data_final.csv", row.names=TRUE)
 # not need in this case
 test_feature <- test_data[-c(3,6,23,24,25)]
 test_feature$label <-as.factor(test_feature$label)
-#Step 5.2-1 Model Selection - Random Forest
+
+#Step 5.2-1 Model Selection - SVM
+svm.cart <- svm(label~.-user_id-product_id-order_id, data=train_data_final, cost=2, scale=TRUE)
+pred.svm <- predict(svm.cart,valid_data_final)
+svm.cm <- confusionMatrix(pred.svm,valid_data_final$label)
+#accuracy: 80.26%
+#recall rate: 5.79%
+
+#Step 5.2-2 Model Selection - Random Forest
 rf.cart <- randomForest(label~.-user_id-product_id-order_id, data=train_data_final, importance=TRUE, ntree = 20, mtry=4)
 #confusion matrix
 print(rf.cart)
@@ -178,10 +186,7 @@ which_product_to_reorder <- valid_data_final[c(1,2,3,4)]
 which_product_to_reorder$prediction <- yhat
 rf.cm <- confusionMatrix(pred.rf,valid_data_final$label)
 #accuracy: 84.71%
-#recall rate for reorder: 1474/1757+1474 = 45.6%
-
-#Step 5.2-2 Model Selection - SVM
-svm.cart <- svm(label~.-user_id-product_id-order_id, data=train_data_final, cost=2, scale=TRUE)
+#recall rate for reorder: 1474/(1757+1474) = 45.6%
 
 #Step 5.2-3 lightgbm
 dtrain_matrix <- as.matrix(train_data_final[c(-3)])
@@ -196,43 +201,71 @@ params = list(max_bin = 100,
               learning_rate = 0.1,
               objective = "binary",
               metric = 'binary_logloss')
-lgb.cart <- lgb.train(
+lgbm.cart <- lgb.train(
                       params = params,
                       data = dtrain,
                       nrounds = 20,
                       valids = valids,
 )
-print(lgb.cart)
-pred.lgb=as.factor(round(predict(lgb.cart,dtest_matrix)>.5))
-yhat <- data.frame(pred.lgb)
-lgb.cm <- confusionMatrix(pred.lgb, valid_data_final$label)
+print(lgbm.cart)
+pred.lgbm=as.factor(round(predict(lgbm.cart,dtest_matrix)>.5))
+yhat <- data.frame(pred.lgbm)
+lgbm.cm <- confusionMatrix(pred.lgbm, valid_data_final$label)
 #accuracy: 80.28%
 #recall rate for reorder: 169/3062+169 = 5.23%
 
 #Step 5.3 Model Comparison
-#Step 5.3-1 Random Forest
-pred.rf.perf <- predict(rf.cart,valid_data_final,type='prob')
-perf = prediction(pred.rf.perf[,2], valid_data_final$label)
-perf_auc_rf <- performance(perf, "auc")
+#Step 5.3-1 SVM
+svm.prob <- svm(label ~.-user_id-product_id-order_id, data=train_data_final, cost=2, scale=TRUE, probability=TRUE)
+pred.svm.perf <- predict(svm.prob,valid_data_final, probability = TRUE)
+perf.svm <- prediction(attr(pred.svm.perf, "probabilities")[,2], valid_data_final$label)
+perf_auc_svm <- performance(perf.svm, "auc")
 # 2. True Positive and Negative Rate
-pred_rf = performance(perf_auc_rf, "tpr","fpr")
+pred_tpr_fpr_svm <- performance(perf.svm, "tpr","fpr")
 # 3. Plot the ROC curve
+plot(pred_tpr_fpr_svm,main="ROC Curve for SVM",col=2,lwd=2)
+abline(a=0,b=1,lwd=2,lty=2,col="gray")
+# 4. Calculate AUC for SVM
+roc.svm <- roc(valid_data_final$label,as.numeric(svm.matrix))
+auc(roc.svm)#0.5256
+
+#Step 5.3-2 Random Forest
+pred.rf.perf <- predict(rf.cart,valid_data_final,type='prob')
+perf.rf = prediction(pred.rf.perf[,2], valid_data_final$label)
+perf_auc_rf <- performance(perf.rf, "auc")
+# 2. True Positive and Negative Rate
+pred_tpr_fpr_rf = performance(perf.rf, "tpr","fpr")
+# 3. Plot the ROC curve
+plot(pred_tpr_fpr_rf,main="ROC Curve for Random Forest",col=2,lwd=2)
 abline(a=0,b=1,lwd=2,lty=2,col="gray")
 # 4. Calculate AUC for RF
 roc.rf <- roc(valid_data_final$label,pred.rf.perf[,2])
 auc(roc.rf)#0.8227
 
-#Step 5.3-2 LGB
-pred.lgb.perf <- predict(lgb.cart,dtest_matrix)
-perf_lgb = prediction(pred.lgb.perf, valid_data_final$label)
-auc.lgb = performance(perf_lgb, "auc")
+#Step 5.3-3 LGBM
+pred.lgbm.perf <- predict(lgbm.cart,dtest_matrix)
+perf_lgbm = prediction(pred.lgbm.perf, valid_data_final$label)
+auc.lgb = performance(perf_lgbm, "auc")
 # 2. True Positive and Negative Rate
-pred_tpr_fpr_lgb = performance(perf_lgb, "tpr","fpr")
+pred_tpr_fpr_lgbm = performance(perf_lgbm, "tpr","fpr")
 # 3. Plot the ROC curve
-plot(pred_tpr_fpr_lgb,main="ROC Curve for lgb",col=2,lwd=2)
+plot(pred_tpr_fpr_lgbm,main="ROC Curve for lgbm",col=2,lwd=2)
 abline(a=0,b=1,lwd=2,lty=2,col="gray")
-# 4. Calculate AUC for LGB
-roc.lgb <- roc(valid_data_final$label, pred.lgb.perf)
-auc(roc.lgb)#0.7386
-#Conclusion: Random Forest performs better in this case in that auc for rf is larger than lgb, which indicates
-#rf classifier performs better than lgb while recall rate for rf is higher than lgb 
+# 4. Calculate AUC for LGBM
+roc.lgbm <- roc(valid_data_final$label, pred.lgbm.perf)
+auc(roc.lgbm)#0.7386
+
+# Conclusion
+# We selected three algorithms in this case: SVM, Random Forest, and lightgbm. We compared these three
+# algorithms based on runtime, recall rate for reorder, and AUC.
+
+# We first used SVM as the benchmark. However, because it is computational intense. Viewed from the result,
+# the recall rate of reorder is only 5.79%, which means it has 5.79% accuracy in predicting which product will be 
+# be reordered and those products have actually been reordered. Besides that, AUC of SVM is 0.5256.
+# Random Forest runs fast when we only set a few ntrees, it will be computational intense when setting default ntrees(500).
+# However, its recall rate is 45.6% and auc is 0.8227.
+# LightGBM runs fast compared with the above two methods. However, its recall rate is only 5.23% if we set the threshold of 0.5,
+# however, its AUC is 0.7386, which is ok.
+
+# In summary, we can say in this case, Random Forest outperforms as it got the highest recall rate and AUC, with a relatively satisfying
+# run time.
