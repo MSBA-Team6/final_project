@@ -24,6 +24,7 @@ library(data.table)
 library(caret)
 library(e1071)
 library(ROCR)
+library(pROC)
 library(randomForest)
 library(lightgbm)
 
@@ -144,7 +145,7 @@ gc(reset = TRUE)
 train_data <- merge(x= train_data, y = user_fea, by='user_id', all.x = TRUE)
 train_data <- merge(x= train_data, y = product_fea, by='product_id', all.x = TRUE)
 train_data <- merge(x= train_data, y = products, by='product_id', all.x = TRUE)
-
+table(train_data$label) # 0:42028 1:10772
 test_data <- merge(x= test_data, y = user_fea, by='user_id', all.x = TRUE)
 test_data <- merge(x= test_data, y = product_fea, by='product_id', all.x = TRUE)
 test_data <- merge(x= test_data, y = products, by='product_id', all.x = TRUE)
@@ -167,24 +168,31 @@ test_feature <- test_data[-c(3,6,23,24,25)]
 test_feature$label <-as.factor(test_feature$label)
 
 #Step 4.2-1 Model Selection - SVM
+star.time.svm <- Sys.time()
 svm.cart <- svm(label~.-user_id-product_id-order_id, data=train_data_final, cost=2, scale=TRUE)
 pred.svm <- predict(svm.cart,valid_data_final)
+end.time.svm <- Sys.time()
+(running.time.svm <- end.time.svm - star.time.svm)
 svm.cm <- confusionMatrix(pred.svm,valid_data_final$label)
 #accuracy: 80.26%
 #recall rate: 5.79%
 
 #Step 4.2-2 Model Selection - Random Forest
+star.time.rf <- Sys.time()
 rf.cart <- randomForest(label~.-user_id-product_id-order_id, data=train_data_final, importance=TRUE, ntree = 20, mtry=4)
+pred.rf <- predict(rf.cart,valid_data_final)
+end.time.rf <- Sys.time()
+(running.time.rf <- end.time.rf - star.time.rf)
+rf.cm <- confusionMatrix(pred.rf,valid_data_final$label)
 #confusion matrix
 print(rf.cart)
 importance(rf.cart)
 varImpPlot(rf.cart)
 #prediction and calculate performance metrics
-pred.rf=predict(rf.cart,valid_data_final)
 yhat <- data.frame(pred.rf)
 which_product_to_reorder <- valid_data_final[c(1,2,3,4)]
 which_product_to_reorder$prediction <- yhat
-rf.cm <- confusionMatrix(pred.rf,valid_data_final$label)
+
 #accuracy: 84.71%
 #recall rate for reorder: 1474/(1757+1474) = 45.6%
 
@@ -201,18 +209,22 @@ params = list(max_bin = 100,
               learning_rate = 0.1,
               objective = "binary",
               metric = 'binary_logloss')
+# train lgbm model
+start.time.lgbm <- Sys.time()
 lgbm.cart <- lgb.train(
                       params = params,
                       data = dtrain,
                       nrounds = 20,
-                      valids = valids,
+                      valids = valids
 )
-print(lgbm.cart)
+#print(lgbm.cart)
 pred.lgbm=as.factor(round(predict(lgbm.cart,dtest_matrix)>.5))
+end.time.lgbm <- Sys.time()
+(running.time.lgbm <- end.time.lgbm - start.time.lgbm)
 yhat <- data.frame(pred.lgbm)
 lgbm.cm <- confusionMatrix(pred.lgbm, valid_data_final$label)
 #accuracy: 80.28%
-#recall rate for reorder: 169/3062+169 = 5.23%
+#recall rate for reorder: 169/(3062+169) = 5.23%
 
 #Step 4.3 Model Comparison
 #Step 4.3-1 SVM
@@ -226,8 +238,8 @@ pred_tpr_fpr_svm <- performance(perf.svm, "tpr","fpr")
 plot(pred_tpr_fpr_svm,main="ROC Curve for SVM",col=2,lwd=2)
 abline(a=0,b=1,lwd=2,lty=2,col="gray")
 # 4. Calculate AUC for SVM
-roc.svm <- roc(valid_data_final$label,as.numeric(svm.matrix))
-auc(roc.svm)#0.5256
+roc.svm <- roc(valid_data_final$label,attr(pred.svm.perf, "probabilities")[,2])
+auc(roc.svm)#0.7075
 
 #Step 4.3-2 Random Forest
 pred.rf.perf <- predict(rf.cart,valid_data_final,type='prob')
@@ -261,11 +273,10 @@ auc(roc.lgbm)#0.7386
 
 # We first used SVM as the benchmark. However, because it is computational intense. Viewed from the result,
 # the recall rate of reorder is only 5.79%, which means it has 5.79% accuracy in predicting which product will be 
-# be reordered and those products have actually been reordered. Besides that, AUC of SVM is 0.5256.
+# be reordered and those products have actually been reordered. Besides that, AUC of SVM is 0.7075.
 # Random Forest runs fast when we only set a few ntrees, it will be computational intense when setting default ntrees(500).
 # However, its recall rate is 45.6% and auc is 0.8227.
 # LightGBM runs fast compared with the above two methods. However, its recall rate is only 5.23% if we set the threshold of 0.5,
 # however, its AUC is 0.7386, which is ok.
-
 # In summary, we can say in this case, Random Forest outperforms as it got the highest recall rate and AUC, with a relatively satisfying
 # run time.
