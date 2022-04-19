@@ -153,6 +153,8 @@ test_data <- merge(x= test_data, y = products, by='product_id', all.x = TRUE)
 #Step 4: Model selection and evaluation
 train_feature <- train_data[-c(3,6,23,24,25)]
 train_feature$label <-as.factor(train_feature$label)#change data type
+test_data_final <- test_data[-c(3,6,23,24,25)]
+test_data_final$label <-as.factor(test_feature$label)
 #Step 4.1 split train and validation set
 trainIndex <- createDataPartition(train_feature$label, 
                                   p = .7,  
@@ -180,15 +182,15 @@ svm.cm <- confusionMatrix(pred.svm,valid_data_final$label)
 #Step 4.2-2 Model Selection - Random Forest
 star.time.rf <- Sys.time()
 rf.cart <- randomForest(label~.-user_id-product_id-order_id, data=train_data_final, importance=TRUE, ntree = 20, mtry=4)
+#print(rf.cart)
 pred.rf <- predict(rf.cart,valid_data_final)
 end.time.rf <- Sys.time()
 (running.time.rf <- end.time.rf - star.time.rf)#2.71secs
-rf.cm <- confusionMatrix(pred.rf,valid_data_final$label)
 #confusion matrix
-print(rf.cart)
+rf.cm <- confusionMatrix(pred.rf,valid_data_final$label)
 importance(rf.cart)
 varImpPlot(rf.cart)
-#prediction and calculate performance metrics
+#since we consider rf is the best algorithm in this case, we create a dataframe for submission with given id --> whether consumer will reorder
 yhat <- data.frame(pred.rf)
 which_product_to_reorder <- valid_data_final[c(1,2,3,4)]
 which_product_to_reorder$prediction <- yhat
