@@ -74,10 +74,18 @@ We are considering two main factors in our feature engineering process:
 - LightGBM: we chose it based on random forest, we used a boosting method and would like to improve speed at the same time.
 ### Result Analysis
 - We compared these three models based on tree factors: run time, recall rate for reordered, and AUC.
-TODO: Embed a comparison table
-## Conclusion and Future Work
 
+| | SVM| Random Forest | LightGBM
+| ---|---| ---| ---|
+|Run time|4.71 mins| 2.71 secs | 0.26 secs 
+|Recall rate for reorder|5.79%| 45.6% | 5.23% 
+|AUC |0.7075| 0.8227 | 0.7386 
+## Conclusion and Future Work
+- Based on the comparison table, `Random Forest` outperforms based on its relatively high recall rate and satisfying run time. `LightGBM` performs best in terms of processing time.
+- However, we picked only a subset of training data, which can be not typical. Therefore, in the next step, we should consider including the whole dataset in; furthermore, we haven't do a lot of trials of parameters in this case, we are going to try more combinations of parameters for better prediction.  
 
 ## Reference
 - https://blog.csdn.net/MATLAB678/article/details/103685487
 - https://blog.csdn.net/MATLAB678/article/details/103715379?spm=1001.2101.3001.6650.12&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-12.topblog&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-12.topblog&utm_relevant_index=15
+- https://www.kaggle.com/code/cjansen/instacart-xgboost-starter-lb-0-3808482
+- https://www.kaggle.com/code/arjunrampal/instacart-lightgbm-version-of-xgboost-starter
