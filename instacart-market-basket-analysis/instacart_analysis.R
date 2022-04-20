@@ -241,7 +241,7 @@ plot(pred_tpr_fpr_svm,main="ROC Curve for SVM",col=2,lwd=2)
 abline(a=0,b=1,lwd=2,lty=2,col="gray")
 # 4. Calculate AUC for SVM
 roc.svm <- roc(valid_data_final$label,attr(pred.svm.perf, "probabilities")[,2])
-auc(roc.svm)#0.7075
+(auc(roc.svm))#0.7008
 
 #Step 4.3-2 Random Forest
 pred.rf.perf <- predict(rf.cart,valid_data_final,type='prob')
@@ -254,7 +254,7 @@ plot(pred_tpr_fpr_rf,main="ROC Curve for Random Forest",col=2,lwd=2)
 abline(a=0,b=1,lwd=2,lty=2,col="gray")
 # 4. Calculate AUC for RF
 roc.rf <- roc(valid_data_final$label,pred.rf.perf[,2])
-auc(roc.rf)#0.8227
+(auc(roc.rf))#0.8122
 
 #Step 4.3-3 LGBM
 pred.lgbm.perf <- predict(lgbm.cart,dtest_matrix)
@@ -267,7 +267,7 @@ plot(pred_tpr_fpr_lgbm,main="ROC Curve for lgbm",col=2,lwd=2)
 abline(a=0,b=1,lwd=2,lty=2,col="gray")
 # 4. Calculate AUC for LGBM
 roc.lgbm <- roc(valid_data_final$label, pred.lgbm.perf)
-auc(roc.lgbm)#0.7386
+(auc(roc.lgbm))#0.7386
 
 # Conclusion
 # We selected three algorithms in this case: SVM, Random Forest, and lightgbm. We compared these three
