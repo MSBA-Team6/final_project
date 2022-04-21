@@ -5,6 +5,7 @@
 ## Feature Engineering
 ### Dataset
 - We are given 6 dataset for this assignment. `aisles.csv` is about the category of product placement; 'department.csv' is about the product type; `product.csv` is regarding the details info about products; `order.csv` describes details about order; `order_products_prior.csv` records the historical orders while `order_product_train.csv` records the orders in the training dataset. 
+- More information of dataset can be found through this link https://www.kaggle.com/competitions/instacart-market-basket-analysis/data
 
 ```mermaid
 classDiagram
